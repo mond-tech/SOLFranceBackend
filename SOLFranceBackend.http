@@ -1,0 +1,6 @@
+@SOLFranceBackend_HostAddress = http://localhost:5222
+
+GET {{SOLFranceBackend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

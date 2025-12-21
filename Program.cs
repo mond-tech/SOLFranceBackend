@@ -84,6 +84,21 @@ builder.Services.AddAuthorization();
 //Async Communication Services
 //builder.Services.AddMessageBroker(builder.Configuration);
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalFrontend",
+        policy =>
+        {
+            policy
+                .WithOrigins(
+                    "http://127.0.0.1:3000",
+                    "http://localhost:3000"
+                )
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -94,6 +109,9 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 app.UseHttpsRedirection();
+
+app.UseCors("LocalFrontend");
+
 app.UseAuthentication();
 app.UseAuthorization();
 

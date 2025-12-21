@@ -93,7 +93,7 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsProduction())
 {
 
     app.UseSwagger();
@@ -109,7 +109,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-ApplyMigration();
+if (builder.Configuration.GetConnectionString("DefaultConnection").ToString().ToLower() != "test")
+    ApplyMigration();
 app.Run();
 
 void ApplyMigration()

@@ -54,6 +54,11 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(option =>
 {
+    option.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "SOL France API",
+        Version = "v1"
+    });
     option.AddSecurityDefinition(name: JwtBearerDefaults.AuthenticationScheme, securityScheme: new OpenApiSecurityScheme
     {
         Name = "Authorization",
@@ -87,13 +92,18 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API");
-    c.RoutePrefix = string.Empty;
-});
-app.UseHttpsRedirection();
+
+    app.UseSwagger();
+
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API");
+        c.RoutePrefix = string.Empty;
+    });
+}
+    app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -119,7 +129,19 @@ void AppAuthentication()
 
     var settingsSection = builder.Configuration.GetSection("ApiSettings2");
 
+    if (settingsSection == null)
+    {
+        // Design-time / tooling execution (Swagger, EF, etc.)
+        return;
+    }
+
     var secret = settingsSection.GetValue<string>("Secret");
+    if (string.IsNullOrWhiteSpace(secret))
+    {
+        // Design-time / tooling execution (Swagger, EF, etc.)
+        return;
+    }
+
     var issuer = settingsSection.GetValue<string>("Issuer");
     var audience = settingsSection.GetValue<string>("Audience");
 

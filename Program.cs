@@ -32,10 +32,11 @@ builder.Services.AddMediatR(config =>
 //builder.Services.AddFluentValidationAutoValidation();
 
 // Add services to the container.
-builder.Services.AddDbContext<AppDbContext>(option =>
-{
-    option.UseSqlServer(builder?.Configuration.GetConnectionString("DefaultConnection"));
-});
+if (builder.Configuration.GetConnectionString("DefaultConnection").ToString().ToLower() != "test")
+    builder.Services.AddDbContext<AppDbContext>(option =>
+    {
+        option.UseSqlServer(builder?.Configuration.GetConnectionString("DefaultConnection"));
+    });
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
 builder.Services.AddScoped<IProductService, ProductService>();
@@ -103,7 +104,7 @@ if (app.Environment.IsProduction())
         c.RoutePrefix = string.Empty;
     });
 }
-    app.UseHttpsRedirection();
+app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 

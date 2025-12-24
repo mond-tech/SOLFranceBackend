@@ -8,5 +8,6 @@ namespace SOLFranceBackend.Service.IService
         Task<LoginResponseDto> Login(LoginRequestDto loginRequestDto);
         Task<bool> AssignRole(string email, string roleName);
         Task<string> GoogleLogin(GoogleLoginRequestDto googleLoginRequestDto);
+        Task<string> ChangePassword(string userId, ChangePasswordRequestDto changePasswordRequestDto);
     }
 }

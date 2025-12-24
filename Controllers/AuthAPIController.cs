@@ -9,9 +9,9 @@ namespace SOLFranceBackend.Controllers
     [Route("api/auth")]
     [ApiController]
     public class AuthAPIController : ControllerBase
-    {
+    { 
         private readonly IAuthService _authService;
-        private readonly AppDbContext _db;
+        private readonly AppDbContext _db;  
         private readonly IMapper _mapper;
         //private readonly IPublishEndpoint _publishEndpoint;
         protected ResponseDto _response;
@@ -117,6 +117,29 @@ namespace SOLFranceBackend.Controllers
                 _response.Message = ex.Message;
             }
             return _response;
+        }
+
+        [HttpPost("users/{id}/change-password")]
+        public async Task<IActionResult> ChangePassword(string id, [FromBody] ChangePasswordRequestDto model)
+        {
+            try
+            {
+                var errorMessage = await _authService.ChangePassword(id, model);
+                if (!string.IsNullOrEmpty(errorMessage))
+                {
+                    _response.IsSuccess = false;
+                    _response.Message = errorMessage;
+                    return BadRequest(_response);
+                }
+                _response.Message = "Password changed successfully";
+                return Ok(_response);
+            }
+            catch (Exception ex)
+            {
+                _response.IsSuccess = false;
+                _response.Message = ex.Message;
+                return BadRequest(_response);
+            }
         }
     }
 }

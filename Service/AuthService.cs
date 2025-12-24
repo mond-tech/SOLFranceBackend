@@ -209,5 +209,45 @@ namespace SOLFranceBackend.Service
                 return ex.Message;
             }
         }
+
+        public async Task<string> ChangePassword(string userId, ChangePasswordRequestDto changePasswordRequestDto)
+        {
+            try
+            {
+                _logger.LogInformation("Change password starts for user: {UserId}", userId);
+
+                var user = await _userManager.FindByIdAsync(userId);
+                if (user == null)
+                {
+                    _logger.LogWarning("User not found: {UserId}", userId);
+                    return "User not found";
+                }
+
+                // Verify current password
+                var isCurrentPasswordValid = await _userManager.CheckPasswordAsync(user, changePasswordRequestDto.CurrentPassword);
+                if (!isCurrentPasswordValid)
+                {
+                    _logger.LogWarning("Invalid current password for user: {UserId}", userId);
+                    return "Current password is incorrect";
+                }
+
+                // Change password
+                var result = await _userManager.ChangePasswordAsync(user, changePasswordRequestDto.CurrentPassword, changePasswordRequestDto.NewPassword);
+                if (!result.Succeeded)
+                {
+                    var errorMessage = result.Errors.FirstOrDefault()?.Description ?? "Failed to change password";
+                    _logger.LogError("Password change failed for user: {UserId}. Error: {Error}", userId, errorMessage);
+                    return errorMessage;
+                }
+
+                _logger.LogInformation("Password changed successfully for user: {UserId}", userId);
+                return "";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Exception in change password. " + ex.Message);
+                return ex.Message;
+            }
+        }
     }
 }

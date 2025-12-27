@@ -4,6 +4,9 @@ using SOLFranceBackend.Models.Dto;
 using SOLFranceBackend.Service.IService;
 using Microsoft.AspNetCore.Identity;
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
+using SOLFranceBackend.Interfaces;
 
 namespace SOLFranceBackend.Service
 {
@@ -15,9 +18,10 @@ namespace SOLFranceBackend.Service
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly ILogger<AuthService> _logger;
         private readonly IConfiguration _configuration;
+        private readonly IEmailSender _emailSender;
 
         public AuthService(AppDbContext db, IJwtTokenGenerator jwtTokenGenerator,
-            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration)
+            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration, IEmailSender emailSender)
         {
             _db = db;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -25,7 +29,7 @@ namespace SOLFranceBackend.Service
             _roleManager = roleManager;
             _logger = logger;
             _configuration = configuration;
-
+            _emailSender = emailSender;
         }
 
         public async Task<bool> AssignRole(string email, string roleName)
@@ -125,6 +129,22 @@ namespace SOLFranceBackend.Service
                     };
 
                     _logger.LogInformation("Registeration of user ends and registeration is successful");
+
+                    // 🔐 Generate email confirmation token
+                    var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+                    var encodedToken = WebEncoders.Base64UrlEncode(
+                        Encoding.UTF8.GetBytes(token));
+
+                    var confirmUrl =
+                        $"{_configuration["FrontendUrl"]}/confirm-email?userId={user.Id}&token={encodedToken}";
+
+                    await _emailSender.SendEmailAsync(
+                        user.Email,
+                        "Confirm your email",
+                        $"<p>Please confirm your account by clicking <a href='{confirmUrl}'>here</a></p>"
+                    );
+                    _logger.LogInformation("Registeration Email Sent");
                     return "";
 
                 }
@@ -248,6 +268,24 @@ namespace SOLFranceBackend.Service
                 _logger.LogError("Exception in change password. " + ex.Message);
                 return ex.Message;
             }
+        }
+
+        public async Task<string> ConfirmEmail(string userId, string token)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                return "Invalid user";
+
+            var decodedToken = Encoding.UTF8.GetString(
+                WebEncoders.Base64UrlDecode(token));
+
+            var result = await _userManager.ConfirmEmailAsync(user, decodedToken);
+
+            if (!result.Succeeded)
+                return "Invalid or expired token";
+
+            _logger.LogInformation("Email verified successfully.");
+            return string.Empty;
         }
     }
 }

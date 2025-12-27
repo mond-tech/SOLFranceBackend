@@ -3,15 +3,18 @@ using SOLFranceBackend.Models.Dto;
 using SOLFranceBackend.Service.IService;
 using SOLFranceBackend.Data;
 using AutoMapper;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.WebUtilities;
+using System.Text;
 
 namespace SOLFranceBackend.Controllers
 {
     [Route("api/auth")]
     [ApiController]
     public class AuthAPIController : ControllerBase
-    { 
+    {
         private readonly IAuthService _authService;
-        private readonly AppDbContext _db;  
+        private readonly AppDbContext _db;
         private readonly IMapper _mapper;
         //private readonly IPublishEndpoint _publishEndpoint;
         protected ResponseDto _response;
@@ -140,6 +143,20 @@ namespace SOLFranceBackend.Controllers
                 _response.Message = ex.Message;
                 return BadRequest(_response);
             }
+        }
+
+        [HttpGet("confirm-email")]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            var errorMessage = await _authService.ConfirmEmail(userId, token);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                _response.IsSuccess = false;
+                _response.Message = errorMessage;
+                return BadRequest(_response);
+            }
+
+            return Ok(_response);
         }
     }
 }

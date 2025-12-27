@@ -15,6 +15,7 @@ using Microsoft.IdentityModel.Tokens;
 using SOLFranceBackend.CommandHandlers;
 using FluentValidation.AspNetCore;
 using FluentValidation;
+using SOLFranceBackend.Interfaces;
 //using Steeltoe.Discovery.Client;
 //using Steeltoe.Discovery.Eureka;
 
@@ -43,10 +44,18 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductDetailService, ProductDetailService>();
 builder.Services.AddScoped<IShoppingCartRepository, ShoppingCartRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IEmailSender, EmailSenderService>();
+
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<AppDbContext>()
-    .AddDefaultTokenProviders();
-//builder.Services.AddServiceDiscovery(options => options.UseEureka());
+
+
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+{
+    options.SignIn.RequireConfirmedEmail = true;
+})
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
+
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {

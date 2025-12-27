@@ -55,6 +55,12 @@ namespace SOLFranceBackend.Controllers
                 _response.Message = "Username or password is incorrect";
                 return BadRequest(_response);
             }
+            if (loginResponse.User != null && string.IsNullOrEmpty(loginResponse.Token))
+            {
+                _response.IsSuccess = false;
+                _response.Message = "Email not confirmed.";
+                return BadRequest(_response);
+            }
             _response.Result = loginResponse;
             return Ok(_response);
 

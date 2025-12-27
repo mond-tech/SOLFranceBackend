@@ -16,6 +16,7 @@ using SOLFranceBackend.CommandHandlers;
 using FluentValidation.AspNetCore;
 using FluentValidation;
 using SOLFranceBackend.Interfaces;
+using SOLFranceBackend.Interfaces.Implementation;
 //using Steeltoe.Discovery.Client;
 //using Steeltoe.Discovery.Eureka;
 
@@ -44,7 +45,12 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IProductDetailService, ProductDetailService>();
 builder.Services.AddScoped<IShoppingCartRepository, ShoppingCartRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IEmailSender, EmailSenderService>();
+builder.Services.AddSingleton<EmailQueue>();
+builder.Services.AddSingleton<IEmailQueue>(sp => sp.GetRequiredService<EmailQueue>());
+builder.Services.AddHostedService<EmailBackgroundService>();
+
+builder.Services.AddScoped<IEmailSender, EmailSender>();
+
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection("ApiSettings:JwtOptions"));
 

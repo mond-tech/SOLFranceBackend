@@ -6,6 +6,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
+using Newtonsoft.Json.Linq;
 
 namespace SOLFranceBackend.Controllers
 {
@@ -155,6 +156,20 @@ namespace SOLFranceBackend.Controllers
         public async Task<IActionResult> ConfirmEmail(string userId, string token)
         {
             var errorMessage = await _authService.ConfirmEmail(userId, token);
+            if (!string.IsNullOrEmpty(errorMessage))
+            {
+                _response.IsSuccess = false;
+                _response.Message = errorMessage;
+                return BadRequest(_response);
+            }
+
+            return Ok(_response);
+        }
+
+        [HttpPost("resend-email-confirmation")]
+        public async Task<IActionResult> ResendEmailConfirmation(ResendEmailConfirmationDto dto)
+        {
+            var errorMessage = await _authService.ResendEmailConfirmation(dto);
             if (!string.IsNullOrEmpty(errorMessage))
             {
                 _response.IsSuccess = false;

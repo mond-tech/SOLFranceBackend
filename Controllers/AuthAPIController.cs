@@ -167,7 +167,7 @@ namespace SOLFranceBackend.Controllers
         }
 
         [HttpPost("resend-email-confirmation")]
-        public async Task<IActionResult> ResendEmailConfirmation(ResendEmailConfirmationDto dto)
+        public async Task<IActionResult> ResendEmailConfirmation([FromBody] ResendEmailConfirmationDto dto)
         {
             var errorMessage = await _authService.ResendEmailConfirmation(dto);
             if (!string.IsNullOrEmpty(errorMessage))

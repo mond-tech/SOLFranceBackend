@@ -105,7 +105,8 @@ namespace SOLFranceBackend.Repository
             {
                 var cart = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).First(x => x.UserId == userId);
 
-                IEnumerable<ProductDto> productDtos = await _productService.GetProducts();
+                IEnumerable<Product> objList = _shoppingCartDbContext.Products.ToList();
+                IEnumerable<ProductDto> productDtos = _mapper.Map<IEnumerable<ProductDto>>(objList);
 
                 foreach (var item in cart.CartDetailsList)
                 {

@@ -24,8 +24,8 @@ namespace SOLFranceBackend
             CreateMap<OrderHeader, OrderHeaderDto>().ReverseMap();
             CreateMap<OrderDetailsDto, OrderDetails>().ReverseMap();
             CreateMap<ProductDto, Product>().ReverseMap();
-            CreateMap<CartHeader, CartHeaderDto>().ReverseMap();
-            CreateMap<CartDetails, CartDetailsDto>().ReverseMap();
+            CreateMap<CartHeader, CartHeaderDto>().ReverseMap().ForMember(dest => dest.CartHeaderId, opt => opt.Ignore());
+            CreateMap<CartDetails, CartDetailsDto>().ReverseMap().ForMember(dest => dest.CartDetailsId, opt => opt.Ignore()); ;
             CreateMap<ApplicationUser, UserDto>().ReverseMap();
         }
     }

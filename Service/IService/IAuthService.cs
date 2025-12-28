@@ -10,5 +10,6 @@ namespace SOLFranceBackend.Service.IService
         Task<string> GoogleLogin(GoogleLoginRequestDto googleLoginRequestDto);
         Task<string> ChangePassword(string userId, ChangePasswordRequestDto changePasswordRequestDto);
         Task<string> ConfirmEmail(string userId, string token);
+        Task<string> ResendEmailConfirmation(ResendEmailConfirmationDto dto);
     }
 }

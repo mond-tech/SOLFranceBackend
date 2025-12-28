@@ -7,7 +7,9 @@ using Google.Apis.Auth;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using SOLFranceBackend.Interfaces;
-using SOLFranceBackend.Interfaces.Implementation;
+using Microsoft.AspNetCore.Identity.UI.Services;
+using Microsoft.AspNetCore.Mvc;
+using IEmailSender = SOLFranceBackend.Interfaces.IEmailSender;
 
 namespace SOLFranceBackend.Service
 {
@@ -20,9 +22,10 @@ namespace SOLFranceBackend.Service
         private readonly ILogger<AuthService> _logger;
         private readonly IConfiguration _configuration;
         private readonly IEmailQueue _emailQueue;
+        private readonly IEmailSender _emailSender;
 
         public AuthService(AppDbContext db, IJwtTokenGenerator jwtTokenGenerator,
-            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration, IEmailQueue emailQueue)
+            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration, IEmailQueue emailQueue, Interfaces.IEmailSender emailSender)
         {
             _db = db;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -31,6 +34,7 @@ namespace SOLFranceBackend.Service
             _logger = logger;
             _configuration = configuration;
             _emailQueue = emailQueue;
+            _emailSender = emailSender;
         }
 
         public async Task<bool> AssignRole(string email, string roleName)
@@ -90,7 +94,7 @@ namespace SOLFranceBackend.Service
                 //if user was found , Generate JWT Token
                 var roles = await _userManager.GetRolesAsync(user);
                 var token = _jwtTokenGenerator.GenerateToken(user, roles);
-                
+
 
                 LoginResponseDto loginResponseDto = new LoginResponseDto()
                 {
@@ -298,5 +302,39 @@ namespace SOLFranceBackend.Service
             _logger.LogInformation("Email verified successfully.");
             return string.Empty;
         }
+
+        [HttpPost("resend-email-confirmation")]
+        public async Task<string> ResendEmailConfirmation(ResendEmailConfirmationDto dto)
+        {
+            // 🔐 Do NOT reveal whether user exists
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+
+            if (user == null || user.EmailConfirmed)
+            {
+                // Always return OK to prevent email enumeration
+                return "If the email exists, a confirmation link has been sent.";
+            }
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            var encodedToken = WebEncoders.Base64UrlEncode(
+                Encoding.UTF8.GetBytes(token));
+
+            var confirmationUrl =
+                $"{_configuration["FrontendUrl"]}/confirm-email" +
+                $"?userId={user.Id}&token={encodedToken}";
+
+            await _emailSender.SendEmailAsync(
+                user.Email,
+                "Confirm your email",
+                $@"
+        <p>Please confirm your email by clicking the link below:</p>
+        <p><a href='{confirmationUrl}'>Confirm Email</a></p>
+        <p>If you did not request this, you can ignore this email.</p>
+        ");
+
+            return "";
+        }
+
     }
 }

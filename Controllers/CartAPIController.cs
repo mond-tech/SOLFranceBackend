@@ -34,60 +34,58 @@ namespace ShoppingCartAPI.Controllers
         }
 
         [HttpGet("GetCart/{userId}")]
-        public async Task<ActionResult<ResponseDto>> GetCart(string userId)
+        public async Task<string> GetCart(string userId)
         {
+            var options = new JsonSerializerOptions
+            {
+                ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve,
+                WriteIndented = true // Optional, for readable output
+            };
+
             var response = await _shoppingCartRepository.GetShoppingCart(userId);
 
-            // response.Result CAN be null (valid case)
-            return Ok(new ResponseDto
-            {
-                IsSuccess = true,
-                Result = response.Result,
-                Message = response.Result == null ? "Cart not found" : "Cart fetched"
-            });
+            var responseResult = response.Result as CartHeader;
+
+            string json = JsonSerializer.Serialize(responseResult, options);
+
+            return json;
         }
 
         [HttpPost("CartUpsert")]
-        public async Task<ActionResult<ResponseDto>> CartUpsert([FromForm] CartHeaderDto cartHeaderDto)
+        public async Task<ResponseDto> CartUpsert(CartHeaderDto cartHeaderDto)
         {
-            var response = await _shoppingCartRepository.AddShoppingCart(cartHeaderDto);
-            return Ok(response);
+            return await _shoppingCartRepository.AddShoppingCart(cartHeaderDto);
         }
 
         [HttpPost("RemoveCart")]
-        public async Task<ActionResult<ResponseDto>> RemoveCart([FromBody] int cartDetailsId)
+        public async Task<ResponseDto> RemoveCart([FromBody] int cartDetailsId)
         {
-            var response = await _shoppingCartRepository.DeleteShoppingCart(cartDetailsId);
-            return Ok(response);
+            return await _shoppingCartRepository.DeleteShoppingCart(cartDetailsId);
         }
-
 
         [Authorize]
         [HttpPost("Checkout/{userId}")]
-        public async Task<ActionResult<ResponseDto>> Checkout(string userId)
+        public async Task<ResponseDto> Checkout(string userId)
         {
             try
             {
-                var cartCheckoutEventModel = new CartCheckoutEvent
+                var cartCheckoutEventModel = new CartCheckoutEvent()
                 {
                     UserId = userId
                 };
 
-                var response = await _mediator.Send(new CartCheckoutCommand
+                _responseDto = await _mediator.Send(new CartCheckoutCommand()
                 {
                     CartCheckoutEventModel = cartCheckoutEventModel
                 });
 
-                return Ok(response);
             }
             catch (Exception ex)
             {
-                return BadRequest(new ResponseDto
-                {
-                    IsSuccess = false,
-                    Message = ex.Message
-                });
+                _responseDto.IsSuccess = false;
+                _responseDto.Message = ex.Message;
             }
+            return _responseDto;
         }
 
     }

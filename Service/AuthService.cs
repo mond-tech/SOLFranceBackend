@@ -7,6 +7,7 @@ using Google.Apis.Auth;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Text;
 using SOLFranceBackend.Interfaces;
+using SOLFranceBackend.Interfaces.Implementation;
 
 namespace SOLFranceBackend.Service
 {
@@ -18,10 +19,10 @@ namespace SOLFranceBackend.Service
         private readonly IJwtTokenGenerator _jwtTokenGenerator;
         private readonly ILogger<AuthService> _logger;
         private readonly IConfiguration _configuration;
-        private readonly IEmailSender _emailSender;
+        private readonly IEmailQueue _emailQueue;
 
         public AuthService(AppDbContext db, IJwtTokenGenerator jwtTokenGenerator,
-            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration, IEmailSender emailSender)
+            UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, ILogger<AuthService> logger, IConfiguration configuration, IEmailQueue emailQueue)
         {
             _db = db;
             _jwtTokenGenerator = jwtTokenGenerator;
@@ -29,7 +30,7 @@ namespace SOLFranceBackend.Service
             _roleManager = roleManager;
             _logger = logger;
             _configuration = configuration;
-            _emailSender = emailSender;
+            _emailQueue = emailQueue;
         }
 
         public async Task<bool> AssignRole(string email, string roleName)
@@ -72,10 +73,6 @@ namespace SOLFranceBackend.Service
                     return new LoginResponseDto() { User = null, Token = "" };
                 }
 
-                //if user was found , Generate JWT Token
-                var roles = await _userManager.GetRolesAsync(user);
-                var token = _jwtTokenGenerator.GenerateToken(user, roles);
-
                 UserDto userDTO = new()
                 {
                     Email = user.Email,
@@ -83,6 +80,17 @@ namespace SOLFranceBackend.Service
                     Name = user.Name,
                     PhoneNumber = user.PhoneNumber
                 };
+
+                if (!user.EmailConfirmed)
+                {
+
+                    return new LoginResponseDto() { User = userDTO, Token = "" };
+                }
+
+                //if user was found , Generate JWT Token
+                var roles = await _userManager.GetRolesAsync(user);
+                var token = _jwtTokenGenerator.GenerateToken(user, roles);
+                
 
                 LoginResponseDto loginResponseDto = new LoginResponseDto()
                 {
@@ -102,6 +110,7 @@ namespace SOLFranceBackend.Service
 
         public async Task<string> Register(RegistrationRequestDto registrationRequestDto)
         {
+            await using var transaction = await _db.Database.BeginTransactionAsync();
             try
             {
                 _logger.LogInformation("Registeration of user starts");
@@ -139,12 +148,13 @@ namespace SOLFranceBackend.Service
                     var confirmUrl =
                         $"{_configuration["FrontendUrl"]}/confirm-email?userId={user.Id}&token={encodedToken}";
 
-                    await _emailSender.SendEmailAsync(
+                    _emailQueue.QueueEmail(
                         user.Email,
                         "Confirm your email",
                         $"<p>Please confirm your account by clicking <a href='{confirmUrl}'>here</a></p>"
                     );
                     _logger.LogInformation("Registeration Email Sent");
+                    await transaction.CommitAsync();
                     return "";
 
                 }
@@ -156,6 +166,7 @@ namespace SOLFranceBackend.Service
             }
             catch (Exception ex)
             {
+                await transaction.RollbackAsync();
                 _logger.LogError("Exception in user registeration. " + ex.Message);
                 return ex.Message;
             }

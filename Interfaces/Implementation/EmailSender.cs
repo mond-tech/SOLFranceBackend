@@ -2,13 +2,13 @@
 using System.Net;
 using SOLFranceBackend.Interfaces;
 
-namespace SOLFranceBackend.Service
+namespace SOLFranceBackend.Interfaces.Implementation
 {
-    public class EmailSenderService : IEmailSender
+    public class EmailSender : IEmailSender
     {
         private readonly IConfiguration _configuration;
 
-        public EmailSenderService(IConfiguration configuration)
+        public EmailSender(IConfiguration configuration)
         {
             _configuration = configuration;
         }

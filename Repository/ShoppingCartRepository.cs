@@ -27,101 +27,41 @@ namespace SOLFranceBackend.Repository
             try
             {
                 var cartFromDb = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).FirstOrDefault(x => x.UserId == cartHeaderDto.UserId);
-                var isEmptyCart = cartHeaderDto.CartDetailsList == null || !cartHeaderDto.CartDetailsList.Any();
-                
                 if (cartFromDb == null)
                 {
-                    if (isEmptyCart)
-                    {
-                        // No cart exists and trying to set empty cart - just return success with null
-                        _response.Result = null;
-                        _response.IsSuccess = true;
-                        _response.Message = "Cart is empty";
-                        return _response;
-                    }
-                    
                     //create header and details
                     CartHeader cartHeader = _mapper.Map<CartHeader>(cartHeaderDto);
                     _shoppingCartDbContext.CartHeaders.Add(cartHeader);
-                    await _shoppingCartDbContext.SaveChangesAsync();
-                    
-                    // Reload to get the generated CartHeaderId
-                    cartFromDb = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).FirstOrDefault(x => x.UserId == cartHeaderDto.UserId);
                 }
                 else
                 {
-                    // Update existing cart - process all items from the request
-                    var dbItems = cartFromDb.CartDetailsList ?? new List<CartDetails>();
-                    
-                    if (isEmptyCart)
+                    //if header is not null
+                    //check if details has same product
+                    var dbItems = cartFromDb.CartDetailsList;
+
+                    var cartItem = dbItems.FirstOrDefault(x => x.ProductId == cartHeaderDto.CartDetailsList.First().ProductId);
+
+                    if (cartItem != null)
                     {
-                        // Clear all items from cart
-                        foreach (var itemToRemove in dbItems.ToList())
-                        {
-                            _shoppingCartDbContext.CartDetails.Remove(itemToRemove);
-                        }
-                        
-                        // Remove the cart header as well since it's empty
-                        _shoppingCartDbContext.CartHeaders.Remove(cartFromDb);
-                        await _shoppingCartDbContext.SaveChangesAsync();
-                        
-                        _response.Result = null;
-                        _response.IsSuccess = true;
-                        _response.Message = "Cart cleared";
-                        return _response;
+                        cartItem.Count = cartHeaderDto.CartDetailsList.First().Count;
                     }
+
                     else
                     {
-                        // Remove items that are not in the new cart
-                        var itemsToRemove = dbItems.Where(dbItem => 
-                            !cartHeaderDto.CartDetailsList.Any(newItem => newItem.ProductId == dbItem.ProductId)).ToList();
-                        
-                        foreach (var itemToRemove in itemsToRemove)
+                        var item = cartHeaderDto.CartDetailsList.First();
+                        var cardDetail = new CartDetails
                         {
-                            _shoppingCartDbContext.CartDetails.Remove(itemToRemove);
-                        }
+                            CartHeaderId = item.CartHeaderId,
+                            ProductId = item.ProductId,
+                            Count = item.Count
+                        };
 
-                        // Update or add items
-                        foreach (var newItem in cartHeaderDto.CartDetailsList)
-                        {
-                            var existingItem = dbItems.FirstOrDefault(x => x.ProductId == newItem.ProductId);
-                            
-                            if (existingItem != null)
-                            {
-                                // Update existing item
-                                existingItem.Count = newItem.Count;
-                            }
-                            else
-                            {
-                                // Add new item
-                                var cartDetail = new CartDetails
-                                {
-                                    CartHeaderId = cartFromDb.CartHeaderId,
-                                    ProductId = newItem.ProductId,
-                                    Count = newItem.Count
-                                };
-                                _shoppingCartDbContext.CartDetails.Add(cartDetail);
-                            }
-                        }
-                        
-                        await _shoppingCartDbContext.SaveChangesAsync();
-                        
-                        // Reload to get updated cart
-                        cartFromDb = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).FirstOrDefault(x => x.UserId == cartHeaderDto.UserId);
+                        _shoppingCartDbContext.CartDetails.Add(cardDetail);
                     }
                 }
+                await _shoppingCartDbContext.SaveChangesAsync();
 
-                // Map the saved cart back to DTO for response
-                if (cartFromDb != null)
-                {
-                    var cartResponse = _mapper.Map<CartHeaderDto>(cartFromDb);
-                    _response.Result = cartResponse;
-                }
-                else
-                {
-                    _response.Result = null;
-                }
-                _response.IsSuccess = true;
+                _response.Result = cartHeaderDto;
             }
             catch (Exception ex)
             {
@@ -163,35 +103,17 @@ namespace SOLFranceBackend.Repository
         {
             try
             {
-                var cart = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).FirstOrDefault(x => x.UserId == userId);
-                
-                if (cart == null)
-                {
-                    _response.Result = null;
-                    _response.IsSuccess = true;
-                    _response.Message = "Cart not found";
-                    return _response;
-                }
+                var cart = _shoppingCartDbContext.CartHeaders.Include(c => c.CartDetailsList).First(x => x.UserId == userId);
 
                 IEnumerable<ProductDto> productDtos = await _productService.GetProducts();
 
-                // Reset cart total before calculating
-                cart.CartTotal = 0;
-
-                if (cart.CartDetailsList != null)
+                foreach (var item in cart.CartDetailsList)
                 {
-                    foreach (var item in cart.CartDetailsList)
-                    {
-                        item.Product = productDtos.FirstOrDefault(u => u.ProductId == item.ProductId);
-                        if (item.Product != null)
-                        {
-                            cart.CartTotal += (item.Count * item.Product.Price);
-                        }
-                    }
+                    item.Product = productDtos.FirstOrDefault(u => u.ProductId == item.ProductId);
+                    cart.CartTotal += (item.Count * item.Product.Price);
                 }
 
                 _response.Result = cart;
-                _response.IsSuccess = true;
             }
             catch (Exception ex)
             {
